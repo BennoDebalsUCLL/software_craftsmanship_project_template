@@ -1,0 +1,199 @@
+Output of: java -cp out com.bookstore.Main
+Use this as a golden master while refactoring: the behaviour of the application
+should not change. The date on the ORDER REPORT line changes every day, the rest
+of the output is identical on every run.
+
+=== THE BOOKSTORE ===
+connected to jdbc:mysql://prod-db-01.bookstore.internal:3306/bookstore as root/root123
+
+[LOG] added article 978-0132350884 to the catalog
+[LOG] added article 978-0321125215 to the catalog
+[LOG] added article 978-0201633610 to the catalog
+[LOG] added article 978-0134757599 to the catalog
+[LOG] added article 978-0596007126 to the catalog
+[LOG] added article 978-0135957059 to the catalog
+[LOG] registered client CUST-1 (ann@example.com)
+[LOG] registered client CUST-2 (luc@example.fr)
+[LOG] registered client CUST-3 (sam@student.example.com)
+
+--- SCENARIO 1: gold client, standard shipping, card payment ---
+[LOG] added 1x 978-0132350884 to cart CART-1
+[LOG] added 1x 978-0135957059 to cart CART-1
+cart contains 2 items, cart total before discount and shipping is 81.61 EUR
+payment accepted, transaction TXN1001 for 73.45 EUR
+[LOG] invoice INV-1 created for order ORD-1
+[LOG] shipment SHIP-1 created with BPOST for order ORD-1
+[MAIL] to=ann@example.com subject=Order ORD-1 confirmed
+       Dear Ann Peeters,
+       
+       Thank you for your order ORD-1.
+       Total: 73.45 EUR
+       Invoice: INV-1
+       Tracking code: BP1ORD-1
+       
+       The Bookstore
+[LOG] order ORD-1 placed by CUST-1 for 73.45 EUR
+
+ORDER ORD-1 [P]
+client       : Ann Peeters (Antwerpen, BE)
+  1x Clean Code                           42.50 EUR
+  1x The Pragmatic Programmer             24.95 EUR
+subtotal     : 67.45 EUR
+discount     : 6.75 EUR
+vat          : 12.75 EUR
+shipping     : 0.00 EUR
+total        : 73.45 EUR
+
+INVOICE INV-1 (PAID)
+order    : ORD-1
+client   : Ann Peeters <ann@example.com>
+excl vat : 60.70 EUR
+vat      : 12.75 EUR
+total    : 73.45 EUR
+
++----------------------------------+
+| BPOST                            |
+| Kerkstraat 12                    |
+| 2000 Antwerpen                   |
+| BE                               |
+| track: BP1ORD-1                  |
++----------------------------------+
+shipping cost on the order    : 0.00 EUR
+shipping cost on the shipment : 0.00 EUR
+
+--- SCENARIO 2: order lifecycle ---
+[LOG] shipment SHIP-1 handed over to BPOST
+[LOG] order ORD-1 is now S1
+[LOG] order ORD-1 is now DONE
+cannot go from DONE to P
+
+--- SCENARIO 3: french client, express, gift wrap, priority, coupon ---
+[LOG] added 1x 978-0201633610 to cart CART-2
+[LOG] added 2x 978-0596007126 to cart CART-2
+[LOG] added 1x 978-0321125215 to cart CART-2
+payment accepted, transaction TXN1002 for 235.2 EUR
+[LOG] invoice INV-2 created for order ORD-2
+[LOG] shipment SHIP-2 created with DHL for order ORD-2
+[MAIL] to=luc@example.fr subject=Order ORD-2 confirmed
+       Dear Luc Martin,
+       
+       Thank you for your order ORD-2.
+       Total: 235.20 EUR
+       Invoice: INV-2
+       Tracking code: DH2ORD-2
+       
+       The Bookstore
+[LOG] order ORD-2 placed by CUST-2 for 235.20 EUR
+
+ORDER ORD-2 [P]
+client       : Luc Martin (Paris, FR)
+  1x Design Patterns                      42.49 EUR
+  2x Head First Design Patterns           79.98 EUR
+  1x Domain-Driven Design                 54.99 EUR
+subtotal     : 177.46 EUR
+discount     : 10.00 EUR
+vat          : 33.49 EUR
+shipping     : 30.75 EUR
+total        : 235.20 EUR
+
+--- SCENARIO 4: student, bank transfer, invoice paid later ---
+[LOG] added 1x 978-0134757599 to cart CART-3
+[LOG] invoice INV-3 created for order ORD-3
+[MAIL] to=sam@student.example.com subject=Order ORD-3 confirmed
+       Dear Sam De Wit,
+       
+       Thank you for your order ORD-3.
+       Total: 47.13 EUR
+       Invoice: INV-3
+       
+       The Bookstore
+[LOG] order ORD-3 placed by CUST-3 for 47.13 EUR
+
+ORDER ORD-3 [NEW]
+client       : Sam De Wit (Gent, BE)
+  1x Refactoring                          41.00 EUR
+subtotal     : 41.00 EUR
+discount     : 2.05 EUR
+vat          : 8.18 EUR
+shipping     : 0.00 EUR
+total        : 47.13 EUR
+invoice status before payment : OPEN
+[LOG] invoice INV-3 paid, txn TXN1003
+invoice status after payment  : PAID
+order status after payment    : P
+
+--- SCENARIO 5: cancelling an order ---
+[LOG] added 3x 978-0132350884 to cart CART-3
+payment accepted, transaction TXN1004 for 138.85 EUR
+[LOG] invoice INV-4 created for order ORD-4
+[LOG] shipment SHIP-3 created with BPOST for order ORD-4
+[MAIL] to=sam@student.example.com subject=Order ORD-4 confirmed
+       Dear Sam De Wit,
+       
+       Thank you for your order ORD-4.
+       Total: 138.85 EUR
+       Invoice: INV-4
+       Tracking code: BP3ORD-4
+       
+       The Bookstore
+[LOG] order ORD-4 placed by CUST-3 for 138.85 EUR
+[LOG] invoice INV-4 refunded
+[MAIL] to=sam@student.example.com subject=Order ORD-4 cancelled
+       Your order has been cancelled.
+[LOG] order ORD-4 cancelled
+order 4 status: CANC
+
+--- SCENARIO 6: things that go wrong ---
+caught: cart is empty
+[LOG] added 1x 978-0132350884 to cart CART-1
+caught: unsupported payment method BITCOIN
+caught: unknown article 978-9999999999
+
+--- SCENARIO 7: catalog prices ---
+Clean Code excl vat        : 42.50 EUR
+Clean Code incl vat for BE : 51.43 EUR
+Design Patterns excl vat   : 42.49 EUR (list price 49.99 EUR with a 15% discount)
+
+--- CONSISTENCY CHECK ---
+ORD-1   order 73.45 EUR       invoice 73.45 EUR       0.00 EUR on the order, 0.00 EUR on the shipment
+ORD-2   order 235.20 EUR      invoice 235.20 EUR      30.75 EUR on the order, 30.75 EUR on the shipment
+ORD-3   order 47.13 EUR       invoice 47.13 EUR       no shipment
+ORD-4   order 138.85 EUR      invoice 138.85 EUR      0.00 EUR on the order, 0.00 EUR on the shipment
+
+--- REPORTS ---
+ORDER REPORT 2026-09-18
+==========================================================
+ORD-1     Ann Peeters         BE   2 items     73.45 EUR     DONE
+ORD-2     Luc Martin          FR   4 items     235.20 EUR    P
+ORD-3     Sam De Wit          BE   1 items     47.13 EUR     P
+ORD-4     Sam De Wit          BE   3 items     138.85 EUR    CANC
+==========================================================
+TOTAL: 494.63 EUR
+
+order;client;country;lines;subtotal;discount;vat;shipping;total;status
+ORD-1;Ann Peeters;BE;2;67.45;6.75;12.75;0.0;73.45;DONE
+ORD-2;Luc Martin;FR;4;177.46;10.0;33.49;30.75;235.2;P
+ORD-3;Sam De Wit;BE;1;41.0;2.05;8.18;0.0;47.13;P
+ORD-4;Sam De Wit;BE;3;127.5;12.75;24.1;0.0;138.85;CANC
+;;;;;;;;494.63;
+
+BESTSELLERS
+Design Patterns                    1
+Clean Code                         4
+Domain-Driven Design               1
+The Pragmatic Programmer           1
+Head First Design Patterns         2
+Refactoring                        1
+
+STOCK REPORT
+ISBN              CATALOG   WAREHOUSE   RESERVED  AVAILABLE 
+978-0132350884    19        19          0         19        
+978-0321125215    19        20          1         19        
+978-0201633610    19        20          1         19        
+978-0134757599    19        20          1         19        
+978-0596007126    18        20          2         18        
+978-0135957059    19        19          0         19        
+
+lifetime value of Ann Peeters: 73.45 EUR
+queries executed: 208
+log messages: 34
